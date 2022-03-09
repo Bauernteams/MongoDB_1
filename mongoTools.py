@@ -5,6 +5,7 @@ import os
 from InFusionTools import convertTime
 import numpy as np
 from multiprocessing import Process, Lock
+import certifi
 
 def mongoUpload(col, t, v):
     
@@ -130,7 +131,8 @@ def mongoUploadFile(s_filePath, ls_SignalWL=None, ls_MessageWL=None, ls_ChannelW
 
 def connectMongoDB():    
     # connect to MongoDB
-    client = MongoClient("127.0.0.1", port=27017)
+    ca = certifi.where()
+    client = MongoClient("mongodb+srv://Bauernteams:4FCQK4LPBXSY4Ss@cluster0.dazrx.mongodb.net/myFirstDatabase?retryWrites=true&w=majority", tlsCAFile=ca)
     db = client.InFusion # use InFusion database
     return db
 
@@ -155,12 +157,11 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
             # TODO: Fix Failing messages:
             if message == "FMS" or "DataFrame" in message: 
                 continue
+            d = {}
             if message == "SoundAI": #SoundAI is a single Sensor and does not have multiple signals
-                l_timeStamps, l_values = [list(x) for x in zip(*matFile[channel][0][0][message])]
-                l_signalNames = ["SoundAI"]
+                signal = "SoundAI"
+                d = [dict([("_id", (x[0]+t0)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message]]
             else:
-                l_signalNames = []
-                l_values = []
                 for iii, signal in enumerate(matFile[channel][0][0][message].dtype.fields.keys()):
                     # TODO: Fix Failing signals:
                     if "DataFrame" in signal:
@@ -169,45 +170,27 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
                         continue
                     # get two lists, first containing the names of signals as string [<signal1>, <signal2>, ...] 
                     #   second containing [[timestamps (as ID)], [<signal1_values>], [<signal2_values>], ...]
-                    l_signalNames.append(signal)
-                    if iii == 0: # extract timestamps once, as they are the same for all signals in a message
-                        l_timeStamps, temp = [list(x) for x in zip(*matFile[channel][0][0][message][signal][0][0])]
-                        l_values.append(temp)
+                    if not d: # extract timestamps once, as they are the same for all signals in a message
+                        d = [dict([("_id", (x[0]+t0)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message][signal][0][0]]
                     else:
                         #print("#5", iii, signal)
-                        temp = [x[1] for x in matFile[channel][0][0][message][signal][0][0]]
-                        l_values.append(temp)
+                        [d[i].update([(signal, x[1])]) for i, x in enumerate(matFile[channel][0][0][message][signal][0][0])]
                 
             # combine timestamps from measurement with start time of measurement to create identifier in database
-            l_timeStamps = [np.round((t0 + td) * 100000) for td in l_timeStamps]
             collist = db.list_collection_names()
             if message in collist:
                 #print("The collection exists.")
                 col = db[message]
             else: 
                 col = db[message]
-            
-            for iv in range(len(l_timeStamps)):
-                upload = {"_id": l_timeStamps[iv]}
-                if message == "SoundAI":
-                    sig = "SoundAI"
-                    upload.update({sig: l_values[iv]})
-                else:
-                    for v, sig in enumerate(l_signalNames):
-                        #print("#6", sig)
-                        try:
-                            upload.update({sig: l_values[v][iv]})
-                        except:
-                            if not message in errorMessages:
-                                errorMessages.append(message)
-                                print("E1: An exception occurred", channel, message,  sig, v, iv)
+
                 try:
                     lock.acquire()
-                    col.insert_one( upload )
+                    col.insert_many( d )
                 except Exception as ex:
                     if not message in errorMessages:
                         errorMessages.append(message)
-                        print("E2: An exception occurred", channel, message,  sig, iv)
+                        print("E2: An exception occurred", channel, message)
                 finally:
                     lock.release()
 
