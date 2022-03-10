@@ -129,14 +129,17 @@ def mongoUploadFile(s_filePath, ls_SignalWL=None, ls_MessageWL=None, ls_ChannelW
                         print("E2: An exception occurred", channel, message,  sig, iv)
                     
 
-def connectMongoDB():    
+def connectMongoDB(local=False):    
     # connect to MongoDB
-    ca = certifi.where()
-    client = MongoClient("mongodb+srv://Bauernteams:4FCQK4LPBXSY4Ss@cluster0.dazrx.mongodb.net/myFirstDatabase?retryWrites=true&w=majority", tlsCAFile=ca)
+    if local:
+        client = MongoClient("127.0.0.1", port=27017)
+    else:
+        ca = certifi.where()
+        client = MongoClient("mongodb+srv://Bauernteams:4FCQK4LPBXSY4Ss@cluster0.dazrx.mongodb.net/myFirstDatabase?retryWrites=true&w=majority", tlsCAFile=ca)
     db = client.InFusion # use InFusion database
     return db
 
-def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, ls_ChannelWL = None, ls_ChannelBL=None):
+def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, ls_ChannelWL = None, ls_ChannelBL=None, local=False):
     print("Loading: ", s_filePath)
     matFile = loadmat(s_filePath)
 
@@ -144,10 +147,10 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
     s_FileName = f_name.split("\\")[-1]
     t0 = convertTime(s_FileName)
 
-    db = connectMongoDB()
+    db = connectMongoDB(local)
     errorMessages = []
     for i, channel in enumerate(matFile.keys()):
-        if ls_ChannelWL and not channel in ls_ChannelWL or channel in ls_ChannelBL:
+        if ls_ChannelWL and not channel in ls_ChannelWL or ls_ChannelBL and channel in ls_ChannelBL:
             continue
         if channel in ["__header__", "__version__", "__globals__"]:
             continue
@@ -194,7 +197,7 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
                 finally:
                     lock.release()
 
-def mongoUploadFileMulti2(s_filePath, ls_SignalWL=None, ls_MessageWL=None, ls_ChannelWL = None, ls_ChannelBL=None):
+def mongoUploadFileMulti2(s_filePath, ls_SignalWL=None, ls_MessageWL=None, ls_ChannelWL = None, ls_ChannelBL=None, local=False):
     print("Loading: ", s_filePath)
     matFile = loadmat(s_filePath)
 
@@ -211,66 +214,47 @@ def mongoUploadFileMulti2(s_filePath, ls_SignalWL=None, ls_MessageWL=None, ls_Ch
         
         my_lock = Lock()
         for ii, message in enumerate(matFile[channel][0][0].dtype.fields.keys()):
-            p_files = Process(target=uploadMesage, args=(message, matFile, channel, my_lock, ls_MessageWL, ls_SignalWL, t0))
+            p_files = Process(target=uploadMesage, args=(message, matFile, channel, my_lock, ls_MessageWL, ls_SignalWL, t0, local))
             p_files.start()
         p_files.join()
 
 
-def uploadMesage(message, matFile, channel, lock, ls_MessageWL, ls_SignalWL, t0):
-    db = connectMongoDB()
+def uploadMesage(message, matFile, channel, lock, ls_MessageWL, ls_SignalWL, t0, local=False):
+    db = connectMongoDB(local)
     if ls_MessageWL and not message in ls_MessageWL:
         return
     # TODO: Fix Failing messages:
     if message == "FMS" or "DataFrame" in message: 
         return
+    d = {}
     if message == "SoundAI": #SoundAI is a single Sensor and does not have multiple signals
-        l_timeStamps, l_values = [list(x) for x in zip(*matFile[channel][0][0][message])]
-        l_signalNames = ["SoundAI"]
+        signal = "SoundAI"
+        d = [dict([("_id", (x[0]+t0)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message]]
     else:
-        l_signalNames = []
-        l_values = []
         for iii, signal in enumerate(matFile[channel][0][0][message].dtype.fields.keys()):
             # TODO: Fix Failing signals:
             if "DataFrame" in signal:
                 continue
             if ls_SignalWL and not signal in ls_SignalWL:
                 continue
-            # get two lists, first containing the names of signals as string [<signal1>, <signal2>, ...] 
-            #   second containing [[timestamps (as ID)], [<signal1_values>], [<signal2_values>], ...]
-            l_signalNames.append(signal)
-            if iii == 0: # extract timestamps once, as they are the same for all signals in a message
-                l_timeStamps, temp = [list(x) for x in zip(*matFile[channel][0][0][message][signal][0][0])]
-                l_values.append(temp)
+            if not d: # extract timestamps once, as they are the same for all signals in a message
+                d = [dict([("_id", (x[0]+t0)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message][signal][0][0]]
             else:
                 #print("#5", iii, signal)
-                temp = [x[1] for x in matFile[channel][0][0][message][signal][0][0]]
-                l_values.append(temp)
+                [d[i].update([(signal, x[1])]) for i, x in enumerate(matFile[channel][0][0][message][signal][0][0])]
         
     # combine timestamps from measurement with start time of measurement to create identifier in database
-    l_timeStamps = [np.round((t0 + td) * 100000) for td in l_timeStamps]
-    collist = db.list_collection_names()
-    if message in collist:
-        #print("The collection exists.")
-        col = db[message]
-    else: 
-        col = db[message]
-    
-    for iv in range(len(l_timeStamps)):
-        upload = {"_id": l_timeStamps[iv]}
-        if message == "SoundAI":
-            sig = "SoundAI"
-            upload.update({sig: l_values[iv]})
-        else:
-            for v, sig in enumerate(l_signalNames):
-                #print("#6", sig)
-                try:
-                    upload.update({sig: l_values[v][iv]})
-                except:
-                    pass
-        try:
-            lock.acquire()
-            col.insert_one( upload )
-        except Exception as ex:
-            pass
-        finally:
-            lock.release()
+        collist = db.list_collection_names()
+        if message in collist:
+            #print("The collection exists.")
+            col = db[message]
+        else: 
+            col = db[message]
+
+            try:
+                lock.acquire()
+                col.insert_many( d )
+            except Exception as ex:
+                pass
+            finally:
+                lock.release()

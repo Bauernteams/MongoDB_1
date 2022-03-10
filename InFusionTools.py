@@ -52,13 +52,13 @@ def renameFilesInFolderDate(sFolder):
     # HERE: replace "-" with "_" in the files' name
     for fn in lFileNames:
         fullpath = os.path.join(sFolder, fn)
-        data = MDF(fullpath)
-        Y = str(data.start_time.year)
-        M = str(data.start_time.month)
-        D = str(data.start_time.day)
-        h = str(data.start_time.hour)
-        m = str(data.start_time.minute)
-        s = str(data.start_time.second)
+        with MDF(fullpath) as data:
+            Y = str(data.start_time.year)
+            M = str(data.start_time.month).zfill(2)
+            D = str(data.start_time.day).zfill(2)
+            h = str(data.start_time.hour+1).zfill(2)
+            m = str(data.start_time.minute).zfill(2)
+            s = str(data.start_time.second).zfill(2)
 
 
         _, f_ext = os.path.splitext(fn)
@@ -66,6 +66,7 @@ def renameFilesInFolderDate(sFolder):
         
         #f_ext = f_ext.replace('mat.', '.')
         new_name = f'{f_name}{f_ext}'
+        #print(new_name)
         os.rename(fn, new_name)
 
 
@@ -108,5 +109,5 @@ def checkIfSignalWasUploaded(db, l_timestamps, s_signalName, s_messageName):
     pass
 
 if __name__ == "__main__":
-    renameFilesInFolderRekorder(r"C:\Users\broll\ZF Friedrichshafen AG\33658 InFusion - Documents\Grunddatenerhebung\04 Data\20210603_extracted\20210609\mat_Export\extracted")
+    renameFilesInFolderDate(r"C:\Users\broll\ZF Friedrichshafen AG\33658 InFusion - Documents\Grunddatenerhebung\04 Data\20201124\01_CAN_LOG")
     #pass
