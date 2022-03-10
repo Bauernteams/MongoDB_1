@@ -161,23 +161,26 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
             if message == "FMS" or "DataFrame" in message: 
                 continue
             d = {}
-            if message == "SoundAI": #SoundAI is a single Sensor and does not have multiple signals
-                signal = "SoundAI"
+            if message == "SoundAI" or message == "AI000" or message == "AI001": #SoundAI is a single Sensor and does not have multiple signals
+                signal = message
                 d = [dict([("_id", (x[0]+t0)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message]]
             else:
-                for iii, signal in enumerate(matFile[channel][0][0][message].dtype.fields.keys()):
-                    # TODO: Fix Failing signals:
-                    if "DataFrame" in signal:
-                        continue
-                    if ls_SignalWL and not signal in ls_SignalWL:
-                        continue
-                    # get two lists, first containing the names of signals as string [<signal1>, <signal2>, ...] 
-                    #   second containing [[timestamps (as ID)], [<signal1_values>], [<signal2_values>], ...]
-                    if not d: # extract timestamps once, as they are the same for all signals in a message
-                        d = [dict([("_id", (x[0]+t0)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message][signal][0][0]]
-                    else:
-                        #print("#5", iii, signal)
-                        [d[i].update([(signal, x[1])]) for i, x in enumerate(matFile[channel][0][0][message][signal][0][0])]
+                try:
+                    for iii, signal in enumerate(matFile[channel][0][0][message].dtype.fields.keys()):
+                        # TODO: Fix Failing signals:
+                        if "DataFrame" in signal or "ErrorFrame" in signal:
+                            continue
+                        if ls_SignalWL and not signal in ls_SignalWL:
+                            continue
+                        # get two lists, first containing the names of signals as string [<signal1>, <signal2>, ...] 
+                        #   second containing [[timestamps (as ID)], [<signal1_values>], [<signal2_values>], ...]
+                        if not d: # extract timestamps once, as they are the same for all signals in a message
+                            d = [dict([("_id", (x[0]+t0)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message][signal][0][0]]
+                        else:
+                            #print("#5", iii, signal)
+                            [d[i].update([(signal, x[1])]) for i, x in enumerate(matFile[channel][0][0][message][signal][0][0])]
+                except:
+                    print("Exception in signal Loop: ", message, signal)
                 
             # combine timestamps from measurement with start time of measurement to create identifier in database
             collist = db.list_collection_names()
