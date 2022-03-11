@@ -108,6 +108,34 @@ def getMongoMessage(s_MessageName, s_SignalName=None):
 def checkIfSignalWasUploaded(db, l_timestamps, s_signalName, s_messageName):
     pass
 
+def findMissingConversions(sFolder):
+    import os
+
+    # String containing the path to the folder with the files to be renamed
+    #sFolder = r"C:\Users\broll\ZF Friedrichshafen AG\33658 InFusion - Documents\Grunddatenerhebung\07 Winterversuche\Data\Messungen"
+
+    # Change the current directory to specified folder:
+    os.chdir(sFolder)
+
+    # Get a list of all the files in specified folder
+    lFileNames = os.listdir()
+
+    # Run through list of files, rename and save each one
+    # HERE: replace "-" with "_" in the files' name
+    mat = []
+    m = []
+    mf4 = []
+    for fn in lFileNames:
+        f_name, f_ext = os.path.splitext(fn)
+        if f_ext == '.m':
+            m.append(f_name)
+        elif f_ext == '.mat':
+            mat.append(f_name)
+        elif f_ext == '.MF4':
+            mf4.append(f_name)
+
+    print(set(mf4).difference(set(m)))
+
 if __name__ == "__main__":
     renameFilesInFolderDate(r"C:\Users\broll\ZF Friedrichshafen AG\33658 InFusion - Documents\Grunddatenerhebung\04 Data\20201124\01_CAN_LOG")
     #pass
