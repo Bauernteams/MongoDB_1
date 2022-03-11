@@ -12,6 +12,11 @@ def convertTime(s_DateTime):
     #print(ret)
     return ret
 
+def getDateFromInFusionID(id):
+    import datetime
+    timestamp = id / 100000.0
+    return datetime.datetime.fromtimestamp(timestamp).isoformat()
+
 def renameFilesInFolder(sFolder):
     import os
 
@@ -52,13 +57,13 @@ def renameFilesInFolderDate(sFolder):
     # HERE: replace "-" with "_" in the files' name
     for fn in lFileNames:
         fullpath = os.path.join(sFolder, fn)
-        data = MDF(fullpath)
-        Y = str(data.start_time.year)
-        M = str(data.start_time.month)
-        D = str(data.start_time.day)
-        h = str(data.start_time.hour)
-        m = str(data.start_time.minute)
-        s = str(data.start_time.second)
+        with MDF(fullpath) as data:
+            Y = str(data.start_time.year)
+            M = str(data.start_time.month).zfill(2)
+            D = str(data.start_time.day).zfill(2)
+            h = str(data.start_time.hour+1).zfill(2)
+            m = str(data.start_time.minute).zfill(2)
+            s = str(data.start_time.second).zfill(2)
 
 
         _, f_ext = os.path.splitext(fn)
@@ -66,6 +71,7 @@ def renameFilesInFolderDate(sFolder):
         
         #f_ext = f_ext.replace('mat.', '.')
         new_name = f'{f_name}{f_ext}'
+        #print(new_name)
         os.rename(fn, new_name)
 
 
@@ -107,10 +113,40 @@ def getMongoMessage(s_MessageName, s_SignalName=None):
 def checkIfSignalWasUploaded(db, l_timestamps, s_signalName, s_messageName):
     pass
 
+<<<<<<< HEAD
 def signalsExistInDB(dbCollection, d_matFileMessageKeys) -> list:
     return [matFileMessageKey for matFileMessageKey in d_matFileMessageKeys if matFileMessageKey not in dbCollection.find_one().keys()]
 
+=======
+def findMissingConversions(sFolder):
+    import os
+
+    # String containing the path to the folder with the files to be renamed
+    #sFolder = r"C:\Users\broll\ZF Friedrichshafen AG\33658 InFusion - Documents\Grunddatenerhebung\07 Winterversuche\Data\Messungen"
+
+    # Change the current directory to specified folder:
+    os.chdir(sFolder)
+
+    # Get a list of all the files in specified folder
+    lFileNames = os.listdir()
+
+    # Run through list of files, rename and save each one
+    # HERE: replace "-" with "_" in the files' name
+    mat = []
+    m = []
+    mf4 = []
+    for fn in lFileNames:
+        f_name, f_ext = os.path.splitext(fn)
+        if f_ext == '.m':
+            m.append(f_name)
+        elif f_ext == '.mat':
+            mat.append(f_name)
+        elif f_ext == '.MF4':
+            mf4.append(f_name)
+
+    print(set(mf4).difference(set(m)))
+>>>>>>> origin/Shared
 
 if __name__ == "__main__":
-    renameFilesInFolderRekorder(r"C:\Users\broll\ZF Friedrichshafen AG\33658 InFusion - Documents\Grunddatenerhebung\04 Data\20210603_extracted\20210609\mat_Export\extracted")
+    renameFilesInFolderDate(r"C:\Users\broll\ZF Friedrichshafen AG\33658 InFusion - Documents\Grunddatenerhebung\04 Data\20201124\01_CAN_LOG")
     #pass
