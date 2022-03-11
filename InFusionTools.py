@@ -12,6 +12,11 @@ def convertTime(s_DateTime):
     #print(ret)
     return ret
 
+def getDateFromInFusionID(id):
+    import datetime
+    timestamp = id / 100000.0
+    return datetime.datetime.fromtimestamp(timestamp).isoformat()
+
 def renameFilesInFolder(sFolder):
     import os
 
