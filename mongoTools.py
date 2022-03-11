@@ -116,3 +116,12 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
                 pass
             finally:
                 lock.release()
+
+def getEarliestID(db):
+    l_colNames = db.list_collection_names()
+    earliestDatabaseID = None
+    for colName in l_colNames:
+        earliestCollectionID = db[colName].find_one({"$query":{},"$orderby":{"_id":1}})["_id"]
+        if not earliestDatabaseID or earliestDatabaseID > earliestCollectionID:
+            earliestDatabaseID = earliestCollectionID
+    return earliestDatabaseID
