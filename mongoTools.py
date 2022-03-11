@@ -78,7 +78,6 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
                 finally:
                     lock.release()
 
-def uploadMesage(message, matFile, channel, lock, ls_MessageWL, ls_SignalWL, t0, local=False):
     db = connectMongoDB(local)
     if ls_MessageWL and not message in ls_MessageWL:
         return
