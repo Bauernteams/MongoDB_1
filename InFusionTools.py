@@ -107,6 +107,10 @@ def getMongoMessage(s_MessageName, s_SignalName=None):
 def checkIfSignalWasUploaded(db, l_timestamps, s_signalName, s_messageName):
     pass
 
+def signalsExistInDB(dbCollection, d_matFileMessageKeys) -> list:
+    return [matFileMessageKey for matFileMessageKey in d_matFileMessageKeys if matFileMessageKey not in dbCollection.find_one().keys()]
+
+
 if __name__ == "__main__":
     renameFilesInFolderRekorder(r"C:\Users\broll\ZF Friedrichshafen AG\33658 InFusion - Documents\Grunddatenerhebung\04 Data\20210603_extracted\20210609\mat_Export\extracted")
     #pass
