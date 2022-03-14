@@ -78,45 +78,6 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
                 finally:
                     lock.release()
 
-    db = connectMongoDB(local)
-    if ls_MessageWL and not message in ls_MessageWL:
-        return
-    # TODO: Fix Failing messages:
-    if message == "FMS" or "DataFrame" in message: 
-        return
-    d = {}
-    if message == "SoundAI": #SoundAI is a single Sensor and does not have multiple signals
-        signal = "SoundAI"
-        d = [dict([("_id", (x[0]+t0)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message]]
-    else:
-        for iii, signal in enumerate(matFile[channel][0][0][message].dtype.fields.keys()):
-            # TODO: Fix Failing signals:
-            if "DataFrame" in signal:
-                continue
-            if ls_SignalWL and not signal in ls_SignalWL:
-                continue
-            if not d: # extract timestamps once, as they are the same for all signals in a message
-                d = [dict([("_id", (x[0]+t0)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message][signal][0][0]]
-            else:
-                #print("#5", iii, signal)
-                [d[i].update([(signal, x[1])]) for i, x in enumerate(matFile[channel][0][0][message][signal][0][0])]
-        
-    # combine timestamps from measurement with start time of measurement to create identifier in database
-        collist = db.list_collection_names()
-        if message in collist:
-            #print("The collection exists.")
-            col = db[message]
-        else: 
-            col = db[message]
-
-            try:
-                lock.acquire()
-                col.insert_many( d )
-            except Exception as ex:
-                pass
-            finally:
-                lock.release()
-
 def getEarliestID(db):
     l_colNames = db.list_collection_names()
     earliestDatabaseID = None
