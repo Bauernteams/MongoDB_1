@@ -144,7 +144,7 @@ def areMessageSignalsInDB(db, message, matFile, startTime):
             d_start.update({signal: earliestSignalValue})
             d_end.update({signal: latestSignalValue})
 
-    return d_start, d_end=/
+    return d_start, d_end
 
 
 
