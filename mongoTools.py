@@ -2,7 +2,7 @@ from typing import Dict
 from pymongo import MongoClient
 from scipy.io import loadmat
 import os
-from InFusionTools import checkIfSignalWasUploaded, convertTime
+from InFusionTools import checkIfSignalWasUploaded, convertTime, TIMESTAMPFACTOR
 import numpy as np
 from multiprocessing import Process, Lock
 import certifi
@@ -49,7 +49,7 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
                         #print(frameinfo.filename, frameinfo.lineno)
                         #print("Skipping: ", channel, message, signal)
                         continue
-                d = [dict([("_id", (x[0]+startTime)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message]]
+                d = [dict([("_id", (x[0]+startTime)*TIMESTAMPFACTOR), (signal, x[1])]) for x in matFile[channel][0][0][message]]
             else:
                 try:
                     for iii, signal in enumerate(matFile[channel][0][0][message].dtype.fields.keys()):
@@ -67,7 +67,7 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
                             # get two lists, first containing the names of signals as string [<signal1>, <signal2>, ...] 
                             #   second containing [[timestamps (as ID)], [<signal1_values>], [<signal2_values>], ...]
                             if not d: # extract timestamps once, as they are the same for all signals in a message
-                                d = [dict([("_id", (x[0]+startTime)*100000), (signal, x[1])]) for x in matFile[channel][0][0][message][signal][0][0]]
+                                d = [dict([("_id", (x[0]+startTime)*TIMESTAMPFACTOR), (signal, x[1])]) for x in matFile[channel][0][0][message][signal][0][0]]
                             else:
                                 #print("#5", iii, signal)
                                 [d[i].update([(signal, x[1])]) for i, x in enumerate(matFile[channel][0][0][message][signal][0][0])]
@@ -135,8 +135,8 @@ def areMessageSignalsInDB(db, message, matFile, startTime):
         earliestSignalValue =       message[signal][0][0][0][1]
         latestSignalTimeDelta =     message[signal][0][0][-1][0]
         latestSignalValue =         message[signal][0][0][-1][1]
-        t0 = (startTime + earliestSignalTimeDelta)*100000
-        t1 = (startTime + latestSignalTimeDelta)*100000
+        t0 = (startTime + earliestSignalTimeDelta)*TIMESTAMPFACTOR
+        t1 = (startTime + latestSignalTimeDelta)*TIMESTAMPFACTOR
         if not d_start:
             d_start = {"_id": t0, signal: earliestSignalValue}
             d_end = {"_id": t1, signal: latestSignalValue}
@@ -153,8 +153,8 @@ def isSignalUploaded(db, channel, message, signal, matFile, startTime):
     earliestSignalValue = matFile[channel][0][0][message][signal][0][0][0][1]
     latestSignalTimeDelta = matFile[channel][0][0][message][signal][0][0][-1][0]
     latestSignalValue = matFile[channel][0][0][message][signal][0][0][-1][1]
-    t0 = (startTime + earliestSignalTimeDelta)*100000
-    t1 = (startTime + latestSignalTimeDelta)*100000
+    t0 = (startTime + earliestSignalTimeDelta)*TIMESTAMPFACTOR
+    t1 = (startTime + latestSignalTimeDelta)*TIMESTAMPFACTOR
     return db[message].find_one({"_id": t0},{signal: earliestSignalValue}) and \
            db[message].find_one({"_id": t1},{signal: latestSignalValue})
 

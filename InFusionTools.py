@@ -1,3 +1,5 @@
+TIMESTAMPFACTOR = 100000.0
+
 def convertTime(s_DateTime):
     import time
     import datetime
@@ -14,7 +16,7 @@ def convertTime(s_DateTime):
 
 def getDateFromInFusionID(id):
     import datetime
-    timestamp = id / 100000.0
+    timestamp = id / TIMESTAMPFACTOR
     return datetime.datetime.fromtimestamp(timestamp).isoformat()
 
 def renameFilesInFolder(sFolder):
@@ -34,8 +36,8 @@ def renameFilesInFolder(sFolder):
     # HERE: replace "-" with "_" in the files' name
     for fn in lFileNames:
         f_name, f_ext = os.path.splitext(fn)
-        f_name = f_name.replace("mat", "")
-        #f_ext = f_ext.replace('mat.', '.')
+        #f_name = f_name.replace("mat", "")
+        f_ext = f_ext.replace('mat.', '.')
         new_name = f'{f_name}{f_ext}'
         os.rename(fn, new_name)
 
