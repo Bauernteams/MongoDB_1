@@ -20,7 +20,7 @@ def connectMongoDB(local=False):
     db = client.InFusion # use InFusion database
     return db
 
-def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, ls_ChannelWL = None, ls_ChannelBL=None, local=False):
+def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, ls_ChannelWL = None, ls_ChannelBL=None, local=False, checkUploadedSignals=False):
     print("Loading: ", s_filePath)
     matFile = loadmat(s_filePath)
 
@@ -44,7 +44,7 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
             d = {}
             if message == "SoundAI" or message == "AI000" or message == "AI001": #SoundAI is a single Sensor and does not have multiple signals
                 signal = message
-                if isSignalNameInDB(db, message, signal):
+                if checkUploadedSignals and isSignalNameInDB(db, message, signal):
                     if isSignalUploaded(db, channel, message, signal, matFile, startTime ):
                         #print(frameinfo.filename, frameinfo.lineno)
                         #print("Skipping: ", channel, message, signal)
@@ -58,7 +58,7 @@ def mongoUploadFileMulti(lock, s_filePath, ls_SignalWL=None, ls_MessageWL=None, 
                             continue
                         if ls_SignalWL and not signal in ls_SignalWL:
                             continue
-                        if isSignalNameInDB(db, message, signal):
+                        if checkUploadedSignals and isSignalNameInDB(db, message, signal):
                             if isSignalUploaded(db, channel, message, signal, matFile, startTime ):
                                 #print(frameinfo.filename, frameinfo.lineno)
                                 #print("Skipping: ", channel, message, signal)
